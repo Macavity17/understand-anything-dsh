@@ -77,9 +77,11 @@ curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/
 
 打开 DSH，直接把下面这句话粘贴进去：
 
-> 请运行这条命令安装 Understand-Anything：
-> `bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh)`
-> 完成后，再用 plugin_manager 安装 `~/.understand-anything/dsh-bridge` 这个 bundle。
+```
+请运行这条命令安装 Understand-Anything：
+`bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh)`
+完成后，再用 plugin_manager 安装 `~/.understand-anything/dsh-bridge` 这个 bundle。
+```
 
 ### 最后一步：激活 Bundle
 
