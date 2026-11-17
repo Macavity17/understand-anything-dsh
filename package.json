@@ -2,6 +2,7 @@
   "name": "@local/understand-anything-dsh",
   "version": "1.0.0",
   "private": true,
+  "description": "DeepSeek Harness bridge for Understand-Anything. Cordis event hooks for auto-update, stale-graph reminders, and DeepSeek blue theming. Upstream: github.com/Egonex-AI/Understand-Anything",
   "type": "module",
   "exports": {
     ".": "./index.js",

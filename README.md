@@ -86,7 +86,7 @@ done
 
 ```bash
 # 克隆本仓库
-git clone https://github.com/paxon/understand-anything-dsh.git ~/projects/understand-anything-dsh
+git clone https://github.com/Macavity17/understand-anything-dsh.git ~/projects/understand-anything-dsh
 
 # 在 DSH 会话中告诉 AI：
 "用 plugin_manager 安装 ~/projects/understand-anything-dsh"
