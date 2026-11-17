@@ -49,56 +49,65 @@ Understand-Anything 是一个卓越的代码库分析工具——它将 LLM 语�
 
 | 功能 | 实现方式 |
 |---|---|
-| **9 个技能**（`/understand` 等） | 通过 `~/.dsh/skills/` 符号链接加载 |
+| **9 个技能**（`/understand` 等） | 安装脚本自动建立 `~/.dsh/skills/` 符号链接 |
 | **自动增量更新** | `tools/result` 监听 → 检测 `git commit` → `agent.inject()` 注入更新提示 |
 | **知识图谱过期提醒** | `agent/created` + `agent/pre-step` → 检查 `meta.json` vs `HEAD` |
-| **DeepSeek 蓝色主题** | 修改了 Dashboard 的默认色系：`#4D6BFE` 靛蓝替代原版金色 |
+| **DeepSeek 蓝色主题** | Dashboard 默认色系：`#4D6BFE` 靛蓝替代原版金色 |
 | **多平台插件根目录** | SKILL.md 中新增 `~/.dsh/skills/` 路径解析 |
-
-### 还需手动完成
-
-- **安装原版项目**：clone 到本地并 `pnpm install && pnpm --filter @understand-anything/core build`
-- **建立技能符号链接**：将 `skills/` 下的 9 个目录链接到 `~/.dsh/skills/`
-- **Dashboard 重建**：运行 `pnpm --filter @understand-anything/dashboard build` 使蓝色主题生效
+| **一键安装脚本** | `curl | bash` 搞定克隆、构建、链接，最后一步在 DSH 中确认 |
 
 ---
 
 ## 🚀 安装
 
-### 前提
-
-1. 已安装 [DeepSeek Harness](https://www.deepseek.com/)
-2. 已 clone 原版 [Understand-Anything](https://github.com/Egonex-AI/Understand-Anything) 到本地
-3. 在上述 clone 中运行过 `pnpm install && pnpm --filter @understand-anything/core build`
-4. 已将技能目录符号链接到 DSH：
+### 方式 1：一键安装脚本
 
 ```bash
-# 假设原版仓库在 ~/Downloads/Understand-Anything/Understand-Anything-main/
-PLUGIN_SKILLS=~/Downloads/Understand-Anything/Understand-Anything-main/understand-anything-plugin/skills
-for skill in $PLUGIN_SKILLS/understand*; do
-    ln -sfn "$skill" ~/.dsh/skills/$(basename "$skill")
-done
+curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh | bash
 ```
 
-### 安装 Bundle
+脚本会自动：
+1. 克隆上游 [Understand-Anything](https://github.com/Egonex-AI/Understand-Anything) 到 `~/.understand-anything/repo/`
+2. `pnpm install && pnpm --filter @understand-anything/core build`
+3. 克隆本桥接仓库到 `~/.understand-anything/dsh-bridge/`
+4. 建立 `~/.dsh/skills/understand*` 符号链接
+5. 在终端打印最后一步指示
 
-在 DSH 中：
+### 方式 2：让 DSH 自己安装
+
+打开 DSH，直接把下面这句话粘贴进去：
+
+> 请运行这条命令安装 Understand-Anything：
+> `bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh)`
+> 完成后，再用 plugin_manager 安装 `~/.understand-anything/dsh-bridge` 这个 bundle。
+
+### 最后一步：激活 Bundle
+
+脚本跑完后，在 DSH 对话中说：
+
+```
+帮我用 plugin_manager 安装 ~/.understand-anything/dsh-bridge
+```
+
+重启 DSH 或开启新会话，bundle 即会激活。之后在任意项目中：
+
+```
+/understand                    # 分析代码库
+/understand-dashboard          # 打开交互式图谱
+/understand-chat 支付流程怎么实现的？  # 向图谱提问
+```
+
+### 更新
 
 ```bash
-# 克隆本仓库
-git clone https://github.com/Macavity17/understand-anything-dsh.git ~/projects/understand-anything-dsh
-
-# 在 DSH 会话中告诉 AI：
-"用 plugin_manager 安装 ~/projects/understand-anything-dsh"
+bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh) --update
 ```
 
-或者直接让 AI 执行：
+### 卸载
 
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh) --uninstall
 ```
-plugin_manager install_bundle ~/projects/understand-anything-dsh
-```
-
-安装后重启 DSH 或开启新会话，bundle 即会激活。
 
 ---
 
