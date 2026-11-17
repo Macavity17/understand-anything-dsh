@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Understand Anything 桥接",
+    "description": "将 Understand-Anything 技能连接到 DSH。用 Cordis 事件监听器替代 Claude Code 的 hook 事件（PostToolUse、SessionStart），实现 git commit 后的自动增量更新和知识图谱过期提醒。"
+  }
+}

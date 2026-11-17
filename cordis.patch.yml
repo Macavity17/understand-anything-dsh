@@ -1,0 +1,6 @@
+# Understand-Anything DSH Bridge Bundle
+# Adapts the Claude Code plugin to DeepSeek Harness
+- insert:
+    - id: understand-anything-dsh
+      name: '@local/understand-anything-dsh'
+      config: {}

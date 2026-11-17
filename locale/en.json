@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Understand Anything bridge",
+    "description": "Connects Understand-Anything skills to DSH. Replaces Claude Code hook events (PostToolUse, SessionStart) with Cordis listeners for auto-update on git commit and stale-graph reminders."
+  }
+}
