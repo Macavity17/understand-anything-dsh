@@ -79,6 +79,57 @@ In this development session the reinstall returned a cached import path under th
 
 `--update` means rerun preparation/build of the supported pinned version; it never does `git pull/fetch/checkout`. To upgrade versions, review new upstream changes and add a verified manifest first. `--uninstall` only prints the bundle removal instructions. It deletes no user skill, graph or repository. Bundle removal disposes its registered aliases and watchers.
 
+## 中文快速上手
+
+### 1. 准备上游（终端）
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh)
+```
+
+脚本会复用或克隆钉在 **v2.9.8**（commit `b861852dda79273bd9d2e01c3160d42e2df510d2`）的上游、按冻结锁文件安装依赖、构建 core 与 dashboard，然后打印下一步。它**不创建 `~/.dsh/skills` 符号链接**（技能由 bundle 的 Host 注册），也**不会自己安装 bundle**。
+
+使用完整仓库而非下载的单独脚本时，直接在仓库里 `./install.sh`，`BRIDGE_DIR` 默认为当前仓库；单独脚本则默认把 bridge 放到 `~/.understand-anything/dsh-bridge`。
+
+### 2. 让 DSH 安装 bundle（对话里）
+
+把这句话发给 DSH：
+
+```
+先用 plugin_manager 的 list_bundles 看已装了什么；如果已有旧的 @local/understand-anything-dsh，
+先只移除它，再用 install_bundle 安装本地目录 <你的 checkout 路径>。装完报告激活状态，
+并确认 ua-understand 技能能加载；不要把"包安装成功"当成"插件已生效"。
+```
+
+上游不是默认位置时，安装后把 bundle 的 `upstreamRoot` 配成 `<UA_DIR>/understand-anything-plugin`（是 plugin 子目录，不是仓库根目录）。
+
+### 3. 重启
+
+**完整退出并重新打开 DSH 应用**——不是开新会话，也不是刷新浏览器。旧的模块解析缓存不清掉，新版 `host-v2` 导出不会生效。
+
+### 4. 验证
+
+在任意项目里让会话调用 `ua_status` 工具，应返回 `catalogComplete: true`、九个 `ua-understand*` 技能，以及 `hookDiagnostics` 字段。它只报告绑定与发现状态，**不代表某个项目已经分析完成**。
+
+### 5. 使用
+
+DSH 里的技能不是斜杠命令，用法是让会话加载对应技能：
+
+```
+用 ua-understand 分析当前项目
+用 ua-understand-chat 回答：支付流程是怎么实现的？
+用 ua-understand-dashboard 打开交互式图谱
+```
+
+自动更新默认关闭，只有在 `/ua-understand --auto-update` 之后才会写入 `.ua/config.json` 的 `autoUpdate: true`。开启后，仅在 shell 真正改变了 Git HEAD、或新会话发现图谱落后于 HEAD 时注入一次提醒；它不会唤醒空闲会话，也不会自行启动模型分析。
+
+### 更新与卸载
+
+```bash
+./install.sh --update     # 只重新准备与构建，不执行 git pull/fetch/checkout
+./install.sh --uninstall  # 只打印移除 bundle 的步骤，不删除技能、图谱或仓库
+```
+
 ## Usage after activation
 
 Use the adapter aliases, not the legacy filesystem entries:
