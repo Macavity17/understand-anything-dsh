@@ -25,6 +25,8 @@
     "bridge.js",
     "runtime.js",
     "skills.js",
+    "batch.js",
+    "validation.js",
     "scripts",
     "theme",
     "README.md",

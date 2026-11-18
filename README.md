@@ -18,7 +18,7 @@ Tested runtime: DSH Desktop `0.2.2-rc.3`, Electron `44.7.0`, macOS; upstream `2.
 
 - Host uses the actual `agents`, `tools`, `workingDirectory`, `skills` services.
 - Nine independent `ua-understand*` aliases, globally contributed through `ctx.skills.registerProvider`; no changes to the user's `~/.dsh/skills` or original same-name skills.
-- Original skill body, paths, resource base and invocation policies preserved. A DSH guide precedes the **complete original body**, translating role delegation and enforcing original full/incremental gates.
+- Original skill body, paths, resource base and invocation policies preserved. A DSH guide precedes the **complete original body**, translating role delegation and specifying the original full/incremental gates (not enforcing the model's execution).
 - For projects with `config.json` `autoUpdate: true`, notices are queued after a successful synchronous shell changes Git HEAD, or when a new agent starts in a project whose saved graph commit differs (the same two moments upstream's `SessionStart` and `PostToolUse` hooks use). Staleness is never probed on every step, the analyzed commit is read from the small `meta.json` (falling back to the graph only when that file has no hash), and both reads stay cached until the files change. Notices carry the producer-owned `understand-anything-dsh` source kind that session format v4 requires, and are deduplicated per project/HEAD across sibling agents.
 - Hook failures are contained: `ua_status` reports `injectErrors`, `hookErrors`, `lastError` and `duplicatesSuppressed`, and an injection refused by the Host is retried on the next check instead of being recorded as delivered.
 - The notice pins the unattended branches of upstream's `hooks/auto-update-prompt.md`, which `skills/understand/SKILL.md` does not cover because it is the interactive `/understand` procedure: a missing graph/meta or an already-current commit stops instead of starting a full analysis or asking the user, and a hook never detects or persists `outputLanguage`. A skill load carries no mode flag, so the notice is the only channel that can tell the model it is running unattended.
@@ -121,7 +121,7 @@ DSH 里的技能不是斜杠命令，用法是让会话加载对应技能：
 用 ua-understand-dashboard 打开交互式图谱
 ```
 
-自动更新默认关闭，只有在 `/ua-understand --auto-update` 之后才会写入 `.ua/config.json` 的 `autoUpdate: true`。开启后，仅在 shell 真正改变了 Git HEAD、或新会话发现图谱落后于 HEAD 时注入一次提醒；它不会唤醒空闲会话，也不会自行启动模型分析。
+自动更新默认关闭；让会话加载 `ua-understand` 并明确提供 `--auto-update` 参数，才会写入 `.ua/config.json` 的 `autoUpdate: true`。开启后，仅在 shell 真正改变了 Git HEAD、或新会话发现图谱落后于 HEAD 时注入一次提醒；它不会唤醒空闲会话，也不会自行启动模型分析。
 
 ### 更新与卸载
 
@@ -154,6 +154,21 @@ Loading a skill alone does not authorize execution. Fresh child prompts must inc
 
 For the dashboard, use the real generated `/?token=…` URL from its startup log. Do not set `VITE_DEMO_MODE=true` or use a plain static server as a substitute for the original protected data endpoints.
 
+## 试运行后的加固（本地改动，尚未发布）
+
+DeepSeek v4 Pro 的 AutoGen 全仓库试运行未通过：原始扫描结果被当成完整 scanner 结果、依赖图缺失，子代理被传入缩短的角色指令和错误输入路径，之后又自写合并器、跳过架构/导览/审查/基线保存阶段并误报成功。图谱不是一个只需修 UI 的合格产物。
+
+新增两个**只读工具**，保留原始上游技能和确定性脚本：
+
+- `ua_prepare_batch({projectRoot, batchIndex, plan?, mode?})`：按真实 batchIndex 读取权威批次和完整角色，返回可直接交给子代理的完整 prompt。校验扫描元数据、依赖输入、文件归属和语言；不写文件、不启动模型。`mode` 默认 `full`，普通增量明确传 `incremental`，符号修复传 `plan: "symbol-retry"`。不能从残留文件是否存在猜测本轮模式。
+- `ua_validate({projectRoot, stage, batchIndexes?, plan?, mode?})`：`stage` 为 `batches` / `candidate` / `published`。每波完成后传 `batchIndexes` 先验收，再发下一波；最终合并前省略它检查全部批次。严格检查上游 schema、所有权、导入边、引用、层/导览和图谱/元数据/指纹基线；返回 `valid: false` 与具体问题，不自动补字段、删边或修图。增量及符号修复要传与 preparation 相同的 `mode` / `plan`。
+
+这两个工具当前面向 **codebase 分析**，不是 knowledge/design/domain 的替代验收器。它们也不是强制流水线：模型仍可能忽略工具或绕过指令。因此工具/回归测试通过不等于 DeepSeek v4 Pro 再次全流程实测已通过。
+
+另一个实际偏差：试运行启动了远端预构建 viewer，它不包含本地的 DeepSeek 蓝主题。Dashboard 的 DSH 指引现明确选择上游已有的本地 fallback，保留正常数据接口与 token 模式；不通过新建静态页面、关闭鉴权或运行 DSH 替代服务器来绕过错误。
+
+重试时先用 `working_directory` 切换会话项目（只在 bash 中 `cd` 不会改变 hook 所用的会话工作区），明确语言 `--language zh`。中文只影响描述、摘要等人类文本，不翻译 JSON 字段、枚举、ID 或路径。大仓库先确认范围；不要根据生产 Python 文件数量估算含 .NET、前端、测试、文档的全仓库成本。
+
 ## Verification
 
 From a source checkout:
@@ -162,15 +177,15 @@ From a source checkout:
 node --test test/*.test.mjs tests/*.test.mjs
 UA_PLUGIN_ROOT=/absolute/upstream/understand-anything-plugin \
 ELECTRON_RUN_AS_NODE=1 "$DSH_NODE_EXECUTABLE" \
-  --test test/skills-dsh.mjs test/host-dsh.mjs
+  --test test/skills-dsh.mjs test/host-dsh.mjs test/contract-v4.mjs
 ```
 
-Current checks: **32 isolated tests**, plus **2 installed-Electron integration tests**, pass. Integration uses the actual installed Cordis skill/tool registries and filesystem parser, checks activation, all nine byte-preserved skill bodies, metadata and cleanup. A third-party original `understand` remains untouched. Installer was also run with real dependencies and actual core/dashboard builds, not just mocked commands.
+Current checks: **77 isolated tests**, plus **4 installed-Electron integration/contract tests**, pass. The Host contract exercises the preparation/validation tools using the real upstream Zod schemas, including rejection of the trial's missing node fields and layer/tour collections. Integration uses the actual installed Cordis skill/tool registries and filesystem parser, checks activation, all nine byte-preserved skill bodies, metadata and cleanup. A third-party original `understand` remains untouched. Installer was also run with real dependencies and actual core/dashboard builds, not just mocked commands.
 
 After a full DSH restart, separately verify:
 
 1. Plugin row `understand-anything-dsh` is `active`, not `pending` or import-failed.
 2. In the same/new session, load `ua-understand`; resource base must be the prepared pinned checkout, and the complete original phases must follow the DSH guide.
 3. Invoke `ua_status`; check nine aliases and complete discovery. This is status, not analysis certification.
-4. Run a small authorized project through the full pipeline and verify semantic nodes/edges, layers, normalized tour, lessons and save baselines. This end-to-end model acceptance test has **not yet run**.
+4. Run a small authorized project through the full pipeline and verify semantic nodes/edges, layers, normalized tour, lessons and save baselines. The DeepSeek v4 Pro AutoGen trial **failed**; the revised adapter still needs a fresh end-to-end model acceptance test.
 5. Visually verify dashboard/theme and localized plugin metadata. Build/HTTP/unit-test success does not certify rendered UI.
