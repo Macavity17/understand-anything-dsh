@@ -2,5 +2,5 @@
 # Adapts the Claude Code plugin to DeepSeek Harness
 - insert:
     - id: understand-anything-dsh
-      name: '@local/understand-anything-dsh'
+      name: '@local/understand-anything-dsh/host-v2'
       config: {}

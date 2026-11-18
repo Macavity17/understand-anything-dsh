@@ -1,0 +1,25 @@
+{
+  "version": "2.9.8",
+  "tag": "v2.9.8",
+  "commit": "b861852dda79273bd9d2e01c3160d42e2df510d2",
+  "files": [
+    {
+      "target": "understand-anything-plugin/packages/dashboard/src/themes/types.ts",
+      "payload": "theme/upstream-2.9.8/themes/types.ts",
+      "beforeSha256": "c4953c103643737fddfa2b4ff58f3e95a1ade34aacefd5032c878c2ef1c2259b",
+      "afterSha256": "4aee72a12965d74644426cf33700c2237948dc4e516b004176a43351af05454e"
+    },
+    {
+      "target": "understand-anything-plugin/packages/dashboard/src/themes/presets.ts",
+      "payload": "theme/upstream-2.9.8/themes/presets.ts",
+      "beforeSha256": "d82700fa737c17e88c57858323151e06e00da46bd2843f174acb5c648fb2a47e",
+      "afterSha256": "f0875571226242d647e745636f6452156499985b9055e747c492826eef419465"
+    },
+    {
+      "target": "understand-anything-plugin/packages/dashboard/src/index.css",
+      "payload": "theme/upstream-2.9.8/index.css",
+      "beforeSha256": "744a73a949df21e547a908af475bb9c1c7cc06662f46814ec1261817beb48bf7",
+      "afterSha256": "9bd740f314fffead8a2a8e4072d8af97e0788de2debf7467570f3cbb7288588f"
+    }
+  ]
+}

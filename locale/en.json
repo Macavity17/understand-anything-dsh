@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Understand Anything bridge",
-    "description": "Connects Understand-Anything skills to DSH. Replaces Claude Code hook events (PostToolUse, SessionStart) with Cordis listeners for auto-update on git commit and stale-graph reminders."
+    "title": "Understand Anything · DSH",
+    "description": "Registers nine ua-understand* adapter skills with the full upstream workflow and DSH delegation guidance. Queues next-step Git HEAD and stale-graph notices for autoUpdate-enabled projects; never starts hidden analysis. The installer supplies a pinned upstream 2.9.8 DeepSeek blue theme and preserves normal token mode."
   }
 }

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Understand Anything 桥接",
-    "description": "将 Understand-Anything 技能连接到 DSH。用 Cordis 事件监听器替代 Claude Code 的 hook 事件（PostToolUse、SessionStart），实现 git commit 后的自动增量更新和知识图谱过期提醒。"
+    "title": "Understand Anything · DSH",
+    "description": "注册 9 个 ua-understand* 适配技能，保留完整上游流程并映射 DSH 代理工具。为开启 autoUpdate 的项目提供 Git HEAD 变更及过期图谱的下一步提示，不会暗中启动分析。安装脚本提供固定上游 2.9.8 的 DeepSeek 蓝色主题；使用正常 token 模式。"
   }
 }

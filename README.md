@@ -1,205 +1,125 @@
-<h1 align="center">Understand Anything · DSH</h1>
+# Understand Anything · DSH
 
-<p align="center">
-  <strong>Turn any codebase into an interactive knowledge graph — now for DeepSeek Harness.</strong>
-</p>
+DeepSeek Harness adapter for [Egonex-AI/Understand-Anything](https://github.com/Egonex-AI/Understand-Anything).
 
-<p align="center">
-  <img src="https://img.shields.io/badge/DeepSeek_Harness-4D6BFE" alt="DeepSeek Harness" />
-  <a href="https://github.com/Egonex-AI/Understand-Anything/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License: MIT" /></a>
-  <a href="https://github.com/Egonex-AI/Understand-Anything"><img src="https://img.shields.io/badge/Upstream-Understand_Anything-d4a574" alt="Upstream" /></a>
-</p>
+## Credits and scope
 
----
+Understand-Anything's analysis engine, dashboard, role definitions, deterministic helpers and multi-stage workflows are upstream work by **Yuxiang Lin / Egonex-AI and Infinite Universe, Inc.** This repository supplies a DSH Host bridge, execution guidance, installer and a reproducible DeepSeek-blue theme. It does not claim authorship of those upstream components. Please support the original project.
 
-## 🙏 致谢 · Credits
+Redistributed theme payloads retain the upstream MIT license in [LICENSE.upstream](theme/LICENSE.upstream). The theme manifest pins upstream **v2.9.8**, commit `b861852dda79273bd9d2e01c3160d42e2df510d2`.
 
-本项目是对 **[Egonex-AI/Understand-Anything](https://github.com/Egonex-AI/Understand-Anything)** 的 DeepSeek Harness（DSH）平台适配。
+## Current release: 1.1.0
 
-Understand-Anything 是一个卓越的代码库分析工具——它将 LLM 语义理解与 tree-sitter 静态分析相结合，生成交互式知识图谱，让你能以可视化的方式探索、搜索和提问任何项目。
+This revision is published on `main`, so the remote curl installer serves the same tree. Live activation after a DSH restart is still being verified; see the upgrade caveat below.
 
-> 感谢 **[Yuxiang Lin](https://github.com/Egonex-AI)** 和 **[Infinite Universe, Inc.](https://egonex.ai)** 创造并开源了这个工具。  
-> 本仓库仅做平台适配工作，所有核心分析引擎、Dashboard UI、多代理管道均来自原版项目。
+Tested runtime: DSH Desktop `0.2.2-rc.3`, Electron `44.7.0`, macOS; upstream `2.9.8`. Other DSH versions, Windows and all upstream language parsers are not certified.
 
-**如果你在使用 Understand-Anything 时解决了实际问题，请去原版仓库给一个 ⭐：**  
-👉 [github.com/Egonex-AI/Understand-Anything](https://github.com/Egonex-AI/Understand-Anything)
+### Implemented
 
----
+- Host uses the actual `agents`, `tools`, `workingDirectory`, `skills` services.
+- Nine independent `ua-understand*` aliases, globally contributed through `ctx.skills.registerProvider`; no changes to the user's `~/.dsh/skills` or original same-name skills.
+- Original skill body, paths, resource base and invocation policies preserved. A DSH guide precedes the **complete original body**, translating role delegation and enforcing original full/incremental gates.
+- For projects with `config.json` `autoUpdate: true`, notices are queued after a successful synchronous shell changes Git HEAD, or when a new agent starts in a project whose saved graph commit differs (the same two moments upstream's `SessionStart` and `PostToolUse` hooks use). Staleness is never probed on every step, the analyzed commit is read from the small `meta.json` (falling back to the graph only when that file has no hash), and both reads stay cached until the files change. Notices carry the producer-owned `understand-anything-dsh` source kind that session format v4 requires, and are deduplicated per project/HEAD across sibling agents.
+- Hook failures are contained: `ua_status` reports `injectErrors`, `hookErrors`, `lastError` and `duplicatesSuppressed`, and an injection refused by the Host is retried on the next check instead of being recorded as delivered.
+- The notice pins the unattended branches of upstream's `hooks/auto-update-prompt.md`, which `skills/understand/SKILL.md` does not cover because it is the interactive `/understand` procedure: a missing graph/meta or an already-current commit stops instead of starting a full analysis or asking the user, and a hook never detects or persists `outputLanguage`. A skill load carries no mode flag, so the notice is the only channel that can tell the model it is running unattended.
+- `ua_status` reports discovery, upstream path and graph metadata without running analysis.
+- Installer prepares a pinned upstream, replays three hash-checked theme files, installs frozen dependencies and builds **core and normal dashboard**. It neither installs the bundle from shell nor starts a server.
 
-## 这是什么？
+### Important limits
 
-这是一个 **DSH Bundle**，将 Understand-Anything 连接到 DeepSeek Harness。
+- This is an instruction-preserving adapter, **not an enforced autonomous pipeline executor**. A model must follow the complete skill, read every referenced role, validate artifacts and respect failure/save gates. Adapter installation does not prove a project's full analysis or tour has completed.
+- Hooks queue context for the next admitted step; they do not wake an idle agent, launch a hidden model run, or grant permission for builds/deletions. They require explicit per-project opt-in.
+- HEAD detection applies to the shell's declared `workdir` (or the calling agent's session directory). Commands that switch to another repository inside shell text, and background job completions, are not directly observed; later stale checks can still notice a differing saved commit in the session project.
+- Alias conflicts or incomplete initial skill discovery fail activation rather than silently overwrite another provider. A nearer preset scope can still shadow global aliases. Sessions without the skill tool cannot load them.
+- Theme preimage/version mismatch is a hard error. The installer does not pull, overwrite user edits, grant build-script approval, bypass tokens, or guess compatibility.
+- Build currently warns that Kotlin parser's build script is ignored and that the ELK chunk is large. Core/dashboard building successfully is not evidence that every language parser works.
+- No graph, architecture, tour or lessons are fabricated during installation. The earlier shadcn demo remains a structural preview, not a complete upstream analysis.
 
-原版 Understand-Anything 支持 Claude Code、Cursor、Copilot、Codex、Gemini CLI、Devin 等平台，但**不包括 DSH**。DSH 和 Claude Code 的插件架构有本质区别：
+## Install from this local checkout
 
-| Claude Code | DeepSeek Harness |
-|---|---|
-| `hooks.json` 声明式事件 → 外部 `.mjs` 脚本 | Cordis 进程内事件监听器 |
-| `PostToolUse` / `SessionStart` 事件 | `tools/result` / `agent/created` 事件 |
-| stdin/stdout JSON 通信 | 直接调用 `agent.inject()` 等 API |
-| `${CLAUDE_PLUGIN_ROOT}` 环境变量 | 符号链接解析 + 路径候选列表 |
-
-这个 bundle 充当了**桥接层**——用 Cordis 事件实现了原版 hooks 的等价功能。
-
----
-
-## ✨ 功能
-
-### 已包含
-
-| 功能 | 实现方式 |
-|---|---|
-| **9 个技能**（`/understand` 等） | 安装脚本自动建立 `~/.dsh/skills/` 符号链接 |
-| **自动增量更新** | `tools/result` 监听 → 检测 `git commit` → `agent.inject()` 注入更新提示 |
-| **知识图谱过期提醒** | `agent/created` + `agent/pre-step` → 检查 `meta.json` vs `HEAD` |
-| **DeepSeek 蓝色主题** | Dashboard 默认色系：`#4D6BFE` 靛蓝替代原版金色 |
-| **多平台插件根目录** | SKILL.md 中新增 `~/.dsh/skills/` 路径解析 |
-| **一键安装脚本** | `curl | bash` 搞定克隆、构建、链接，最后一步在 DSH 中确认 |
-
----
-
-## 🚀 安装
-
-### 方式 1：一键安装脚本
+Requirements: Node.js **>=22**, pnpm **>=10**, and Git for a new clone. Use a trusted checkout containing all files, not a standalone old script.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh | bash
+./install.sh
 ```
 
-脚本会自动：
-1. 克隆上游 [Understand-Anything](https://github.com/Egonex-AI/Understand-Anything) 到 `~/.understand-anything/repo/`
-2. `pnpm install && pnpm --filter @understand-anything/core build`
-3. 克隆本桥接仓库到 `~/.understand-anything/dsh-bridge/`
-4. 建立 `~/.dsh/skills/understand*` 符号链接
-5. 在终端打印最后一步指示
+Defaults:
 
-### 方式 2：让 DSH 自己安装
+- Upstream: `$HOME/.understand-anything/repo`
+- Bridge: directory containing this script
 
-打开 DSH，直接把下面这句话粘贴进去：
-
-```
-请运行这条命令安装 Understand-Anything：
-`bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh)`
-完成后，再用 plugin_manager 安装 `~/.understand-anything/dsh-bridge` 这个 bundle。
-```
-
-### 最后一步：激活 Bundle
-
-脚本跑完后，在 DSH 对话中说：
-
-```
-帮我用 plugin_manager 安装 ~/.understand-anything/dsh-bridge
-```
-
-重启 DSH 或开启新会话，bundle 即会激活。之后在任意项目中：
-
-```
-/understand                    # 分析代码库
-/understand-dashboard          # 打开交互式图谱
-/understand-chat 支付流程怎么实现的？  # 向图谱提问
-```
-
-### 更新
+The DSH dependency tool may provide bundled executables. For that environment:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh) --update
+NODE_BIN=/absolute/path/to/node \
+PNPM_SCRIPT=/absolute/path/to/pnpm.mjs \
+./install.sh
 ```
 
-### 卸载
+The script prints the next AI tool action, not a fictional shell `plugin_manager` command. Ask DSH:
+
+> Inspect installed bundles, then install this checkout with `plugin_manager` action `install_bundle`. If the old version is installed, remove **only** `@local/understand-anything-dsh` first, then install this checkout again. Report the returned activation status and verify the plugin is active and `ua-understand` can load; do not equate package installation with success.
+
+For a nondefault upstream, configure the Host's `upstreamRoot` to the absolute **understand-anything-plugin directory**, not the repository root. The declared Config supports this field. Do not rewrite the user's complete profile patch from plugin code.
+
+Resolution order: explicit `upstreamRoot`, `UNDERSTAND_PLUGIN_ROOT`, prepared default, resolved original skill symlink, universal plugin symlink. Unsupported explicit roots fail rather than fall back to a different checkout.
+
+### Upgrade caveat
+
+The old Host waited for a nonexistent `agent` service. Version 1.1.0 uses a new exported `host-v2` entry and retains a compatibility root export. Local package replacement may still require a **full DSH application restart**, not a browser refresh or merely a new session, to clear package/module resolution caches.
+
+In this development session the reinstall returned a cached import path under the old removed working-directory checkout, while fresh Electron resolution and isolated Host activation pointed at the correct projects checkout and passed. Until the live DSH is restarted and rechecked, **live activation remains unverified**. Do not work around this by recreating the obsolete installation directory.
+
+### Updating / removing
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Macavity17/understand-anything-dsh/main/install.sh) --uninstall
+./install.sh --update
+./install.sh --uninstall
 ```
 
----
+`--update` means rerun preparation/build of the supported pinned version; it never does `git pull/fetch/checkout`. To upgrade versions, review new upstream changes and add a verified manifest first. `--uninstall` only prints the bundle removal instructions. It deletes no user skill, graph or repository. Bundle removal disposes its registered aliases and watchers.
 
-## 🔧 工作原理
+## Usage after activation
 
-```
-┌─────────────────────────────────────────┐
-│          DSH 会话                        │
-│                                         │
-│  用户: "用 understand 分析这个项目"        │
-│       ↓                                 │
-│  DSH 通过 ~/.dsh/skills/understand      │
-│  加载 SKILL.md（符号链接 → 原版仓库）      │
-│       ↓                                 │
-│  AI 执行技能中的 bash/node 命令           │
-│  调用原版的 project-scanner,             │
-│  file-analyzer 等代理                    │
-│       ↓                                 │
-│  生成 .ua/knowledge-graph.json          │
-│                                         │
-│  ┌─ Bundle hooks (本仓库) ────────────┐ │
-│  │                                     │ │
-│  │  tools/result 事件                  │ │
-│  │  ├─ 检测 git commit                 │ │
-│  │  └─ agent.inject("请增量更新图谱")   │ │
-│  │                                     │ │
-│  │  agent/created 事件                 │ │
-│  │  ├─ 检查 meta.json vs HEAD          │ │
-│  │  └─ agent.inject("图谱已过期")       │ │
-│  └─────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
-```
+Use the adapter aliases, not the legacy filesystem entries:
 
-### 与原版 CC hooks 的对应
-
-| CC hooks.json | DSH bundle index.js |
+| Skill | Purpose |
 |---|---|
-| `PostToolUse` matcher `^(Bash\|exec)$` → `node post-tool-use-auto-update.mjs` | `ctx.on('tools/result')` → `if (tool_name === 'bash' && git commit)` → `agent.inject(...)` |
-| `SessionStart` → `node session-start-stale-check.mjs` | `ctx.on('agent/created')` + `agent/pre-step` → `if (isStale)` → `agent.inject(...)` |
-| stdin JSON → stdout `hookSpecificOutput` | 直接调用 DSH API |
+| `ua-understand` | Full/incremental codebase analysis |
+| `ua-understand-dashboard` | Original token-protected dashboard |
+| `ua-understand-chat` | Graph-backed questions |
+| `ua-understand-diff` | Change impact |
+| `ua-understand-explain` | Explain a component |
+| `ua-understand-domain` | Business/domain view |
+| `ua-understand-figma` | Original Figma pipeline (requires its own services/access) |
+| `ua-understand-knowledge` | Knowledge pipeline |
+| `ua-understand-onboard` | Onboarding |
 
----
+Example human request:
 
-## 📁 仓库结构
+> Load `ua-understand`, then analyze `/absolute/project/path` using `--full --language zh`. Follow the entire original skill; read and pass full role definitions to DSH subagents. Do not bypass architecture, tour normalization, review or final save gates. Stop and report if a required stage fails.
 
+Loading a skill alone does not authorize execution. Fresh child prompts must include absolute roots, language directive, complete role definition and phase inputs. File analyzers remain at most five concurrent; code lessons retain twelve-file batches. Use actual completion notices and inspected artifacts, not guessed progress.
+
+For the dashboard, use the real generated `/?token=…` URL from its startup log. Do not set `VITE_DEMO_MODE=true` or use a plain static server as a substitute for the original protected data endpoints.
+
+## Verification
+
+From a source checkout:
+
+```bash
+node --test test/*.test.mjs tests/*.test.mjs
+UA_PLUGIN_ROOT=/absolute/upstream/understand-anything-plugin \
+ELECTRON_RUN_AS_NODE=1 "$DSH_NODE_EXECUTABLE" \
+  --test test/skills-dsh.mjs test/host-dsh.mjs
 ```
-understand-anything-dsh/
-├── README.md           ← 你正在看
-├── package.json         ← DSH bundle 声明
-├── cordis.patch.yml     ← Cordis 插件行定义
-├── index.js             ← Host 插件：Cordis 事件监听器
-├── icon.svg             ← DeepSeek 蓝色知识图谱图标
-└── locale/
-    ├── en.json          ← 英文插件描述
-    └── zh.json          ← 中文插件描述
-```
 
----
+Current checks: **32 isolated tests**, plus **2 installed-Electron integration tests**, pass. Integration uses the actual installed Cordis skill/tool registries and filesystem parser, checks activation, all nine byte-preserved skill bodies, metadata and cleanup. A third-party original `understand` remains untouched. Installer was also run with real dependencies and actual core/dashboard builds, not just mocked commands.
 
-## 🎨 DeepSeek 蓝色主题
+After a full DSH restart, separately verify:
 
-Dashboard 默认主题已从原版的暖金色改为 DeepSeek 蓝：
-
-| 元素 | 原版 | DSH 版 |
-|---|---|---|
-| 主色调 | `#d4a574` （暖金） | `#4D6BFE` （靛蓝） |
-| 暗色调 | `#c9a96e` | `#3D56E0` |
-| 亮色调 | `#e8c49a` | `#7B8FF9` |
-| 背景 | `#0a0a0a` | `#070b18` （深蓝黑） |
-| 表面 | `#111111` | `#0d1428` |
-
-修改位于原版仓库的：
-- `packages/dashboard/src/index.css`
-- `packages/dashboard/src/themes/presets.ts`
-- `packages/dashboard/src/themes/types.ts`
-
----
-
-## 🤝 贡献
-
-本仓库仅做平台适配，不包含核心分析引擎。
-
-- **Bug / 功能请求** 关于知识图谱分析 → 请提交到 [原版仓库](https://github.com/Egonex-AI/Understand-Anything)
-- **Bug / 功能请求** 关于 DSH 桥接 / hooks → 请提交到本仓库 Issue
-- **PR** 欢迎 — 请确保修改集中在 Cordis 事件监听器和平台适配层
-
----
-
-<p align="center">
-  <strong>再次感谢 <a href="https://github.com/Egonex-AI">Egonex-AI</a> 创造了 Understand-Anything。</strong>
-  <br />
-  <em>MIT License &copy; 原版 Yuxiang Lin and Infinite Universe, Inc. · DSH 适配 &copy; 2026</em>
-</p>
+1. Plugin row `understand-anything-dsh` is `active`, not `pending` or import-failed.
+2. In the same/new session, load `ua-understand`; resource base must be the prepared pinned checkout, and the complete original phases must follow the DSH guide.
+3. Invoke `ua_status`; check nine aliases and complete discovery. This is status, not analysis certification.
+4. Run a small authorized project through the full pipeline and verify semantic nodes/edges, layers, normalized tour, lessons and save baselines. This end-to-end model acceptance test has **not yet run**.
+5. Visually verify dashboard/theme and localized plugin metadata. Build/HTTP/unit-test success does not certify rendered UI.
