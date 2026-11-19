@@ -7,7 +7,8 @@
       "target": "understand-anything-plugin/packages/dashboard/src/themes/types.ts",
       "payload": "theme/upstream-2.9.8/themes/types.ts",
       "beforeSha256": "c4953c103643737fddfa2b4ff58f3e95a1ade34aacefd5032c878c2ef1c2259b",
-      "afterSha256": "4aee72a12965d74644426cf33700c2237948dc4e516b004176a43351af05454e"
+      "afterSha256": "3f2dcf355b95c83e61151816c6b4783df2974463c33aa589c5520e55ea067551",
+      "priorSha256": "4aee72a12965d74644426cf33700c2237948dc4e516b004176a43351af05454e"
     },
     {
       "target": "understand-anything-plugin/packages/dashboard/src/themes/presets.ts",
@@ -20,6 +21,12 @@
       "payload": "theme/upstream-2.9.8/index.css",
       "beforeSha256": "744a73a949df21e547a908af475bb9c1c7cc06662f46814ec1261817beb48bf7",
       "afterSha256": "9bd740f314fffead8a2a8e4072d8af97e0788de2debf7467570f3cbb7288588f"
+    },
+    {
+      "target": "understand-anything-plugin/packages/dashboard/src/themes/ThemeContext.tsx",
+      "payload": "theme/upstream-2.9.8/themes/ThemeContext.tsx",
+      "beforeSha256": "38979fa20ea8b03ecf16e7c93cfb4876c6e4aec062ded4072f6f65ff79ad921a",
+      "afterSha256": "7c2a4b9f944e4cc1cfc86392a425ac115ebcc17b66646e663834ab608f5ea941"
     }
   ]
 }

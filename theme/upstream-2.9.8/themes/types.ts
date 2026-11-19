@@ -35,3 +35,21 @@ export const DEFAULT_THEME_CONFIG: ThemeConfig = {
   presetId: "dark-deepseek",
   accentId: "deepseek-blue",
 };
+
+/** The branded launcher overrides startup only, never a saved preference. */
+export function resolveStartupTheme(
+  launchTheme: unknown,
+  savedTheme: ThemeConfig | null,
+  metaTheme?: ThemeConfig | null,
+): ThemeConfig {
+  if (launchTheme === "deepseek") return { ...DEFAULT_THEME_CONFIG };
+  return savedTheme ?? metaTheme ?? DEFAULT_THEME_CONFIG;
+}
+
+export function shouldApplyMetaTheme(
+  launchTheme: unknown,
+  savedTheme: ThemeConfig | null,
+  metaTheme?: ThemeConfig | null,
+): boolean {
+  return launchTheme !== "deepseek" && !savedTheme && !!metaTheme;
+}

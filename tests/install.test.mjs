@@ -70,16 +70,16 @@ test('theme baseline and payload hashes match the pinned manifest', async () => 
   }
 });
 
-test('theme reproduces all three files byte-for-byte and is idempotent', async (t) => {
+test('theme reproduces all four files byte-for-byte and is idempotent', async (t) => {
   const { upstream } = await isolated(t);
-  assert.equal((await prepareUpstream(upstream)).changed, 3);
+  assert.equal((await prepareUpstream(upstream)).changed, 4);
   for (const file of manifest.files) assert.deepEqual(await readFile(path.join(upstream, file.target)), await readFile(path.join(repo, file.payload)));
   assert.equal((await prepareUpstream(upstream)).changed, 0);
 });
 
 test('--check validates without writing', async (t) => {
   const { upstream } = await isolated(t);
-  assert.equal((await prepareUpstream(upstream, { check: true })).changed, 3);
+  assert.equal((await prepareUpstream(upstream, { check: true })).changed, 4);
   for (const file of manifest.files) assert.equal(hash(await readFile(path.join(upstream, file.target))), file.beforeSha256);
 });
 
@@ -102,7 +102,29 @@ test('changed last file fails preflight without patching earlier files', async (
 test('mixed already-patched/pristine files are explicitly completed', async (t) => {
   const { upstream } = await isolated(t);
   await writeFile(path.join(upstream, manifest.files[0].target), await readFile(path.join(repo, manifest.files[0].payload)));
+  assert.equal((await prepareUpstream(upstream)).changed, 3);
+});
+
+test('prior three-file patch upgrades exactly types and context; edited context is preserved', async (t) => {
+  const { upstream } = await isolated(t);
+  const types = manifest.files[0];
+  const currentTypes = await readFile(path.join(repo, types.payload), 'utf8');
+  const priorTypes = currentTypes.slice(0, currentTypes.indexOf('\n/** The branded launcher'));
+  assert.equal(hash(priorTypes), types.priorSha256);
+  await writeFile(path.join(upstream, types.target), priorTypes);
+  for (const file of manifest.files.slice(1, 3)) {
+    await writeFile(path.join(upstream, file.target), await readFile(path.join(repo, file.payload)));
+  }
+  assert.equal((await prepareUpstream(upstream, { check: true })).changed, 2);
+  const context = path.join(upstream, manifest.files[3].target);
+  const pristine = await readFile(context);
+  await writeFile(context, '// user edit\n' + pristine);
+  await assert.rejects(prepareUpstream(upstream), /preimage mismatch/);
+  assert.equal(hash(await readFile(path.join(upstream, types.target))), types.priorSha256);
+  assert.equal(await readFile(context, 'utf8'), '// user edit\n' + pristine);
+  await writeFile(context, pristine);
   assert.equal((await prepareUpstream(upstream)).changed, 2);
+  assert.equal((await prepareUpstream(upstream)).changed, 0);
 });
 
 test('missing theme file fails before any write', async (t) => {
@@ -141,7 +163,7 @@ test('installer builds core then normal dashboard, preserves skills, prints AI-t
   assert.match(result.stdout, /"action": "install_bundle"/);
   assert.match(result.stdout, /不是 shell 命令/);
   assert.match(result.stdout, /token=/);
-  assert.match(result.stdout, /3 patched file/);
+  assert.match(result.stdout, /4 patched file/);
   for (const file of manifest.files) assert.equal(hash(await readFile(path.join(env.upstream, file.target))), file.afterSha256);
   await unchangedSkills(env);
 });

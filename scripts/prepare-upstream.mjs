@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Replays only the three explicitly versioned theme files. No dependency
+// Replays only the four explicitly versioned theme files. No dependency
 // installation, skill rewrites, git pulls, demo mode or token-mode changes.
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, realpath, lstat } from 'node:fs/promises';
@@ -12,7 +12,10 @@ const targets = [
   'understand-anything-plugin/packages/dashboard/src/themes/types.ts',
   'understand-anything-plugin/packages/dashboard/src/themes/presets.ts',
   'understand-anything-plugin/packages/dashboard/src/index.css',
+  'understand-anything-plugin/packages/dashboard/src/themes/ThemeContext.tsx',
 ];
+// Exact prior three-file release payload accepted only for its changed types.ts.
+const priorTypesSha256 = '4aee72a12965d74644426cf33700c2237948dc4e516b004176a43351af05454e';
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 // Reject links even when they point back inside the tree: a theme patch must
@@ -37,7 +40,8 @@ export async function prepareUpstream(upstreamRoot, { check = false } = {}) {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
   if (manifest.version !== '2.9.8' || manifest.commit !== 'b861852dda79273bd9d2e01c3160d42e2df510d2' ||
       !Array.isArray(manifest.files) || manifest.files.length !== targets.length ||
-      manifest.files.some((file, i) => file.target !== targets[i])) {
+      manifest.files.some((file, i) => file.target !== targets[i] ||
+        (i === 0 ? file.priorSha256 !== priorTypesSha256 : file.priorSha256 !== undefined))) {
     throw new Error('Invalid pinned theme manifest');
   }
   const metadataPath = await regularFile(root, 'understand-anything-plugin/.claude-plugin/plugin.json');
@@ -56,8 +60,8 @@ export async function prepareUpstream(upstreamRoot, { check = false } = {}) {
     const after = await readFile(payload);
     if (sha256(after) !== file.afterSha256) throw new Error(`Corrupt theme payload: ${file.payload}`);
     const digest = sha256(before);
-    if (digest !== file.beforeSha256 && digest !== file.afterSha256) {
-      throw new Error(`Theme preimage mismatch (user edits or incompatible upstream): ${file.target}; expected ${file.beforeSha256} or ${file.afterSha256}, got ${digest}. No files changed.`);
+    if (digest !== file.beforeSha256 && digest !== file.afterSha256 && digest !== file.priorSha256) {
+      throw new Error(`Theme preimage mismatch (user edits or incompatible upstream): ${file.target}; expected ${file.beforeSha256} or ${file.afterSha256}${file.priorSha256 ? ` or prior ${file.priorSha256}` : ''}, got ${digest}. No files changed.`);
     }
     plan.push({ target, before, after, changed: digest !== file.afterSha256 });
   }

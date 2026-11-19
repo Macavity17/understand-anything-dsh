@@ -1,36 +1,49 @@
 --- a/understand-anything-plugin/packages/dashboard/src/themes/types.ts
 +++ b/understand-anything-plugin/packages/dashboard/src/themes/types.ts
-@@ -3,6 +3,7 @@
-   | "dark-ocean"
-   | "dark-forest"
-   | "dark-rose"
+@@ -5,0 +6 @@
 +  | "dark-deepseek"
-   | "light-minimal";
- 
- export interface AccentSwatch {
-@@ -31,6 +32,6 @@
- }
- 
- export const DEFAULT_THEME_CONFIG: ThemeConfig = {
+@@ -34,2 +35,2 @@
 -  presetId: "dark-gold",
 -  accentId: "gold",
 +  presetId: "dark-deepseek",
 +  accentId: "deepseek-blue",
- };
+@@ -36,0 +38,18 @@
++
++/** The branded launcher overrides startup only, never a saved preference. */
++export function resolveStartupTheme(
++  launchTheme: unknown,
++  savedTheme: ThemeConfig | null,
++  metaTheme?: ThemeConfig | null,
++): ThemeConfig {
++  if (launchTheme === "deepseek") return { ...DEFAULT_THEME_CONFIG };
++  return savedTheme ?? metaTheme ?? DEFAULT_THEME_CONFIG;
++}
++
++export function shouldApplyMetaTheme(
++  launchTheme: unknown,
++  savedTheme: ThemeConfig | null,
++  metaTheme?: ThemeConfig | null,
++): boolean {
++  return launchTheme !== "deepseek" && !savedTheme && !!metaTheme;
++}
 --- a/understand-anything-plugin/packages/dashboard/src/themes/presets.ts
 +++ b/understand-anything-plugin/packages/dashboard/src/themes/presets.ts
-@@ -1,6 +1,7 @@
- import type { AccentSwatch, ThemePreset } from "./types.ts";
- 
- const DARK_ACCENT_SWATCHES: AccentSwatch[] = [
+@@ -3,0 +4 @@
 +  { id: "deepseek-blue", name: "DeepSeek Blue", accent: "#4D6BFE", accentDim: "#3D56E0", accentBright: "#7B8FF9" },
-   { id: "gold", name: "Gold", accent: "#d4a574", accentDim: "#c9a96e", accentBright: "#e8c49a" },
-   { id: "ocean", name: "Ocean", accent: "#5ba4cf", accentDim: "#4e93ba", accentBright: "#7abce0" },
-   { id: "emerald", name: "Emerald", accent: "#5ea67a", accentDim: "#4e9468", accentBright: "#78c492" },
-@@ -124,6 +125,35 @@
-       "text-primary": "#f2e8ea",
-       "text-secondary": "#9f8790",
-       "text-muted": "#6b535a",
+@@ -142,0 +144,29 @@
++    id: "dark-deepseek",
++    name: "Dark DeepSeek",
++    isDark: true,
++    defaultAccentId: "deepseek-blue",
++    accentSwatches: DARK_ACCENT_SWATCHES,
++    colors: {
++      root: "#070b18",
++      surface: "#0d1428",
++      elevated: "#141e3a",
++      panel: "#0a1024",
++      "text-primary": "#e8ecf4",
++      "text-secondary": "#8b95b8",
++      "text-muted": "#535d7a",
 +      "node-file": "#4a7c9b",
 +      "node-function": "#5a9e6f",
 +      "node-class": "#8b6fb0",
@@ -47,64 +60,34 @@
 +    },
 +  },
 +  {
-+    id: "dark-deepseek",
-+    name: "Dark DeepSeek",
-+    isDark: true,
-+    defaultAccentId: "deepseek-blue",
-+    accentSwatches: DARK_ACCENT_SWATCHES,
-+    colors: {
-+      root: "#070b18",
-+      surface: "#0d1428",
-+      elevated: "#141e3a",
-+      panel: "#0a1024",
-+      "text-primary": "#e8ecf4",
-+      "text-secondary": "#8b95b8",
-+      "text-muted": "#535d7a",
-       "node-file": "#4a7c9b",
-       "node-function": "#5a9e6f",
-       "node-class": "#8b6fb0",
 --- a/understand-anything-plugin/packages/dashboard/src/index.css
 +++ b/understand-anything-plugin/packages/dashboard/src/index.css
-@@ -10,18 +10,18 @@
-   --color-panel: #141414;
- 
-   /* Accent */
+@@ -13,3 +13,3 @@
 -  --color-accent: #d4a574;
 -  --color-accent-dim: #c9a96e;
 -  --color-accent-bright: #e8c49a;
 +  --color-accent: #4D6BFE;
 +  --color-accent-dim: #3D56E0;
 +  --color-accent-bright: #7B8FF9;
- 
-   /* Text */
+@@ -18,3 +18,3 @@
 -  --color-text-primary: #f5f0eb;
 -  --color-text-secondary: #a39787;
 -  --color-text-muted: #6b5f53;
 +  --color-text-primary: #e8ecf4;
 +  --color-text-secondary: #8b95b8;
 +  --color-text-muted: #535d7a;
- 
-   /* Borders */
+@@ -23,2 +23,2 @@
 -  --color-border-subtle: rgba(212, 165, 116, 0.12);
 -  --color-border-medium: rgba(212, 165, 116, 0.25);
 +  --color-border-subtle: rgba(77, 107, 254, 0.12);
 +  --color-border-medium: rgba(77, 107, 254, 0.25);
- 
-   /* Node types */
-   --color-node-file: #4a7c9b;
-@@ -39,44 +39,44 @@
-   --color-node-resource: #a5b4fc;
- 
-   /* Knowledge node types */
+@@ -42 +42 @@
 -  --color-node-article: #d4a574;
 +  --color-node-article: #4D6BFE;
-   --color-node-entity: #7ba4c9;
+@@ -44 +44 @@
 -  --color-node-topic: #c9b06c;
 +  --color-node-topic: #7B8FF9;
-   --color-node-claim: #6fb07a;
-   --color-node-source: #8a8a8a;
- 
-   /* Diff */
+@@ -49,4 +49,4 @@
 -  --color-diff-changed: #e05252;
 -  --color-diff-affected: #d4a030;
 -  --color-diff-changed-dim: rgba(224, 82, 82, 0.25);
@@ -113,8 +96,7 @@
 +  --color-diff-affected: #f59e0b;
 +  --color-diff-changed-dim: rgba(239, 68, 68, 0.25);
 +  --color-diff-affected-dim: rgba(245, 158, 11, 0.25);
- 
-   /* Glass */
+@@ -55,4 +55,4 @@
 -  --glass-bg: rgba(20, 20, 20, 0.8);
 -  --glass-bg-heavy: rgba(20, 20, 20, 0.95);
 -  --glass-border: rgba(212, 165, 116, 0.1);
@@ -123,38 +105,64 @@
 +  --glass-bg-heavy: rgba(13, 20, 40, 0.95);
 +  --glass-border: rgba(77, 107, 254, 0.1);
 +  --glass-border-heavy: rgba(77, 107, 254, 0.15);
- 
-   /* Scrollbar */
+@@ -61,2 +61,2 @@
 -  --scrollbar-thumb: rgba(212, 165, 116, 0.2);
 -  --scrollbar-thumb-hover: rgba(212, 165, 116, 0.35);
 +  --scrollbar-thumb: rgba(77, 107, 254, 0.2);
 +  --scrollbar-thumb-hover: rgba(77, 107, 254, 0.35);
- 
-   /* Glow */
+@@ -65,3 +65,3 @@
 -  --glow-accent: rgba(212, 165, 116, 0.15);
 -  --glow-accent-strong: rgba(212, 165, 116, 0.4);
 -  --glow-accent-pulse: rgba(212, 165, 116, 0.6);
 +  --glow-accent: rgba(77, 107, 254, 0.15);
 +  --glow-accent-strong: rgba(77, 107, 254, 0.4);
 +  --glow-accent-pulse: rgba(77, 107, 254, 0.6);
- 
-   /* Edges */
+@@ -70,3 +70,3 @@
 -  --color-edge: rgba(212, 165, 116, 0.3);
 -  --color-edge-dim: rgba(212, 165, 116, 0.08);
 -  --color-edge-dot: rgba(212, 165, 116, 0.15);
 +  --color-edge: rgba(77, 107, 254, 0.3);
 +  --color-edge-dim: rgba(77, 107, 254, 0.08);
 +  --color-edge-dot: rgba(77, 107, 254, 0.15);
- 
-   /* Accent overlays */
+@@ -75,2 +75,2 @@
 -  --color-accent-overlay-bg: rgba(212, 165, 116, 0.05);
 -  --color-accent-overlay-border: rgba(212, 165, 116, 0.25);
 +  --color-accent-overlay-bg: rgba(77, 107, 254, 0.05);
 +  --color-accent-overlay-border: rgba(77, 107, 254, 0.25);
- 
-   /* Kbd */
+@@ -79 +79 @@
 -  --kbd-bg: rgba(212, 165, 116, 0.1);
 +  --kbd-bg: rgba(77, 107, 254, 0.1);
- 
-   /* Typography */
-   --font-serif: 'DM Serif Display', Georgia, serif;
+--- a/understand-anything-plugin/packages/dashboard/src/themes/ThemeContext.tsx
++++ b/understand-anything-plugin/packages/dashboard/src/themes/ThemeContext.tsx
+@@ -11 +11 @@
+-import { DEFAULT_THEME_CONFIG } from "./types.ts";
++import { resolveStartupTheme, shouldApplyMetaTheme } from "./types.ts";
+@@ -14,0 +15,2 @@
++const launchTheme = import.meta.env.VITE_DSH_THEME;
++
+@@ -50 +52 @@
+-  return loadFromLocalStorage() ?? metaTheme ?? DEFAULT_THEME_CONFIG;
++  return resolveStartupTheme(launchTheme, loadFromLocalStorage(), metaTheme);
+@@ -60,0 +63 @@
++  const userChangedTheme = useRef(false);
+@@ -62 +65,2 @@
+-  // Apply theme on mount and config changes
++  // Branded startup (including StrictMode replay) must not persist the override.
++  // Normal launches retain upstream persistence; branded launches save user choices.
+@@ -65 +69 @@
+-    if (initialized.current) {
++    if (launchTheme === "deepseek" ? userChangedTheme.current : initialized.current) {
+@@ -71 +75 @@
+-  // Update if metaTheme arrives later (async fetch) and no localStorage preference exists
++  // Branded startup is also immune to metadata arriving after the first render.
+@@ -73,2 +77,2 @@
+-    if (metaTheme && !loadFromLocalStorage()) {
+-      setConfig(metaTheme);
++    if (shouldApplyMetaTheme(launchTheme, loadFromLocalStorage(), metaTheme)) {
++      setConfig(metaTheme!);
+@@ -78,0 +83 @@
++    userChangedTheme.current = true;
+@@ -85,0 +91 @@
++    userChangedTheme.current = true;
+@@ -89,0 +96 @@
++    userChangedTheme.current = true;

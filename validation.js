@@ -23,7 +23,18 @@ export async function validateArtifacts(pluginRoot, projectRoot, stage = 'publis
   const schemas = suppliedSchemas ?? await loadSchemas(pluginRoot);
   let issueCount = 0;
   const issues = [];
-  const issue = (path, message) => { issueCount++; if (issues.length < 50) issues.push({ path, message }); };
+  const groups = new Map();
+  const issue = (path, message) => {
+    issueCount++;
+    if (issues.length < 50) issues.push({ path, message });
+    const batch = path.match(/batch-[0-9]+(?:-part-[0-9]+)?/)?.[0] ?? 'project';
+    const category = path.includes('.tour') ? 'tour-contract' : path.includes('.layers') ? 'architecture' : path.includes('.edges') ? 'edge-schema' : path.includes('.nodes') ? 'node-schema' : path.includes('fingerprint') || path.includes('gitCommitHash') ? 'baseline' : /coverage|covers/.test(message) ? 'coverage' : /Imports/.test(message) ? 'imports' : /endpoint|Dangling/.test(message) ? 'references' : 'contract';
+    const key = `${batch}:${category}`;
+    const group = groups.get(key) ?? { batch, category, count: 0, samples: [] };
+    group.count++;
+    if (group.samples.length < 2) group.samples.push({ path, message });
+    groups.set(key, group);
+  };
   const readJson = path => {
     try { return JSON.parse(readFileSync(path, 'utf8')); }
     catch (error) { issue(path, error.message); return undefined; }
@@ -53,6 +64,7 @@ export async function validateArtifacts(pluginRoot, projectRoot, stage = 'publis
     if (!Array.isArray(graph.nodes) || !graph.nodes.length) issue(path + '.nodes', 'Nonempty nodes array required');
     if (!Array.isArray(graph.edges)) issue(path + '.edges', 'Edges array required');
     const ids = new Set();
+    const wholeFiles = new Map();
     for (const [i, node] of (Array.isArray(graph.nodes) ? graph.nodes : []).entries()) {
       nodes++;
       if (!checkSchema(schemas.GraphNodeSchema, node, `${path}.nodes.${i}`)) continue;
@@ -60,7 +72,15 @@ export async function validateArtifacts(pluginRoot, projectRoot, stage = 'publis
       if (!node.id.startsWith(`${node.type}:`)) issue(`${path}.nodes.${i}.id`, 'ID must carry the canonical node-type prefix');
       if (ids.has(node.id)) issue(`${path}.nodes.${i}.id`, 'Duplicate node ID');
       ids.add(node.id);
-      if (node.filePath) covered.add(node.filePath);
+      if (/^(?:Module|Class|Function|Method|File|模块|类|函数|方法|文件)\s*[:：]\s*[^\s，。]+\.?$/i.test(node.summary.trim()) || /^.+中定义的[类函数方法]+.+[，,]\s*包含\d+个方法[，,]\s*\d+行[。.]?$/.test(node.summary.trim())) issue(`${path}.nodes.${i}.summary`, 'Template-only name/count summary is not semantic responsibility/behavior evidence; repair with the original role, not guessed defaults');
+      if (node.filePath) {
+        covered.add(node.filePath);
+        if (['file', 'config', 'document'].includes(node.type)) {
+          if (node.id !== `${node.type}:${node.filePath}`) issue(`${path}.nodes.${i}.id`, 'Whole-file nodes must use type:filePath identity; do not retype methods/symbols as files');
+          if (wholeFiles.has(node.filePath)) issue(`${path}.nodes.${i}.filePath`, 'Duplicate whole-file representations inflate coverage; use the canonical inventory category');
+          wholeFiles.set(node.filePath, node.id);
+        }
+      }
     }
     for (const [i, edge] of (Array.isArray(graph.edges) ? graph.edges : []).entries()) {
       edges++;
@@ -74,6 +94,11 @@ export async function validateArtifacts(pluginRoot, projectRoot, stage = 'publis
       tour = Array.isArray(graph.tour) ? graph.tour.length : 0;
       if (!layers) issue(path + '.layers', 'Architecture is absent: do not call this a completed full analysis');
       if (!tour) issue(path + '.tour', 'Tour is absent: do not call this a completed full analysis');
+      for (const [i, step] of (mode === 'full' && Array.isArray(graph.tour) ? graph.tour : []).entries()) {
+        if (!Number.isInteger(step?.order) || step.order !== i + 1) issue(`${path}.tour.${i}.order`, 'Tour role requires sequential integer order starting at one');
+        if (!Array.isArray(step?.nodeIds) || step.nodeIds.length < 1 || step.nodeIds.length > 5 || new Set(step.nodeIds).size !== step.nodeIds.length) issue(`${path}.tour.${i}.nodeIds`, 'Tour role requires 1–5 distinct real node IDs per step, not the first ten files in a directory');
+        if (/^Overview of .+\s[—-]\s\d+ files?\.?$/i.test(step?.description ?? '')) issue(`${path}.tour.${i}.description`, 'Directory/count fallback is not a pedagogical narrative; dispatch the original tour-builder');
+      }
       for (const key of ['layers', 'tour']) {
         for (const [i, item] of (Array.isArray(graph[key]) ? graph[key] : []).entries()) {
           if (Array.isArray(item?.nodeIds)) for (const id of item.nodeIds) {
@@ -199,8 +224,8 @@ export async function validateArtifacts(pluginRoot, projectRoot, stage = 'publis
     }
   }
   if (stage !== 'batches') for (const path of inventory) if (!covered.has(path)) issue('inventory', `Missing graph coverage for ${path}`);
-  return { stage, projectRoot: resolve(projectRoot), uaDir, valid: issueCount === 0, issueCount, issues,
-    issuesTruncated: issueCount > issues.length, counts: { inventory: inventory.size, nodes, edges, layers, tour },
+  return { stage, plan: planName, mode, projectRoot: resolve(projectRoot), uaDir, valid: issueCount === 0, issueCount, issues,
+    issuesTruncated: issueCount > issues.length, issueGroups: [...groups.values()], counts: { inventory: inventory.size, nodes, edges, layers, tour },
     analysisCompleted: false,
     note: 'Read-only structural acceptance check, not proof of semantic quality or execution of every upstream phase. Invalid/partial artifacts must not be reported as a completed analysis or auto-launched in Dashboard.' };
 }

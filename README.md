@@ -169,6 +169,30 @@ DeepSeek v4 Pro 的 AutoGen 全仓库试运行未通过：原始扫描结果被�
 
 重试时先用 `working_directory` 切换会话项目（只在 bash 中 `cd` 不会改变 hook 所用的会话工作区），明确语言 `--language zh`。中文只影响描述、摘要等人类文本，不翻译 JSON 字段、枚举、ID 或路径。大仓库先确认范围；不要根据生产 Python 文件数量估算含 .NET、前端、测试、文档的全仓库成本。
 
+## 第二次实测后的修复（本地未发布）
+
+较小的 autogen-core 试运行仍有偏离：完整 batch prompt 被缩短、失败验收被越过、assemble-review/代码课程被遗漏，最终没有执行 published 验收。现有图谱有 325 节点/417 边，但验收仍发现短 commit hash 与两个文件覆盖缺失；不能把它算成完整分析通过。
+
+- 新增 `ua_prepare_dashboard({projectRoot})`：只读验证三个主题文件已经完全应用补丁（pending=0）及本地 Vite，返回精确命令。通过 managed background bash 执行本地 `scripts/start-dashboard.mjs`；无远端下载、无 shell `&`、不关闭 token。
+- 通过 DSH 原生 `tools.guard` 阻止识别到的远端 UA viewer、准备后被缩短的 batch prompt、已失败波次之后的新 batch，以及未经全部批次验收的已识别 merge。已识别的后续角色同样要求完整原文。防护是有限的，不声称能阻止任意 bash 脚本绕过或强制模型执行每一阶段。
+- batch prompt 渲染为原始多行文本；工具结果截断时必须读完整 spill 文件，不可重写简版。验收增加按批次/类别分组的计数及样本，避免把前50条错误当成全部错误类别。
+- 使用 `scripts/extract-import-map.mjs --plugin-root <root> <input> <output>` 包装原始 helper：在确切版本/hash 下仅修正 Python import roots，解决 tests → src 布局漏连及 `import logging` 误连包内 logging。上游文件保持不变，不支持的 helper 失败关闭。
+- 扫描排除本轮分析数据，Python helper 提前使用 >=3.10 的已验证解释器；阶段 ledger 明确包含 assemble-review、课程尝试和最终验收，禁止提前清理。
+
+第二次测试只验证了本地 Dashboard 的主题资源和 token，尚未修正浏览器保存偏好对默认值的覆盖。以下是第三次反馈后的修复。
+
+## 第三次实测：主题启动优先级与伪导览
+
+最新试运行没有派发 architecture-analyzer、tour-builder 或 code-lesson-writer。协调代理在合并后用目录/count 脚本生成5个步骤，每个大目录取前10个节点；它不是原始导览角色的产物。输入节点也含 Module/Class/name 模板和被错误标为 file 的方法。不能靠“让导览写长一点”修好这些问题。
+
+- 品牌 launcher 设 `VITE_DSH_THEME=deepseek`；第四个可复现主题补丁覆盖 ThemeContext。旧 gold 偏好和异步 metadata 不再覆盖品牌启动，不删除保存偏好，页面内选择仍有效。支持精确的旧三文件补丁升级；其他用户编辑先拒绝、后写入。
+- `ua_prepare_phase({projectRoot,role,mode?,mergeReport?,detailedFiles?})` 返回完整角色和原始阶段模板：assemble-review、architecture/addenda、tour/README/entrypoint、≤12文件 lessons。它只准备 prompt，不跑模型、不编写课程、不发布文件；root 继续执行原始 normalization/publication。
+- `subagent` 和 `subagent_fork` 均受完整 prompt / 失败 wave 防护。active full run 的 candidate/published 验收额外检查已准入的完整角色派发请求、当前 phase 文件、原始归一化层/导览一致性。源码扫描/批次内容变化会撤销旧阶段凭据。它们仍只证明有限的执行请求与产物一致性，不证明子代理完成或语义正确。
+- 拒绝已知 name/count 摘要模板、伪 whole-file 方法身份、重复 whole-file 覆盖、目录/count 导览、每步超出1–5个真实 ID。不会通过填默认文案、删跨批次边或提高字数来伪造语义验收。
+- 同一 active full run 的 Dashboard 准备/已识别 launcher 必须有通过的 published 验收，且 graph/meta/fingerprints/lesson 内容必须仍与该次检查一致。独立只读检查没有历史执行凭据时会明确标示 `phaseEvidence.checked:false`，不伪造证明。
+
+现场已应用第四主题补丁、重新构建并重启品牌 Dashboard，HTTP 验证模式/资源/原图/token；测试覆盖旧gold、StrictMode、迟到metadata和手动picker。现有5步稀疏导览和原始会话均保留，没有替它生成“模型已完成”的新故事。浏览器最终画面仍需刷新确认；新工具/Host 代码仍需完整重启 DSH。
+
 ## Verification
 
 From a source checkout:
@@ -180,7 +204,7 @@ ELECTRON_RUN_AS_NODE=1 "$DSH_NODE_EXECUTABLE" \
   --test test/skills-dsh.mjs test/host-dsh.mjs test/contract-v4.mjs
 ```
 
-Current checks: **77 isolated tests**, plus **4 installed-Electron integration/contract tests**, pass. The Host contract exercises the preparation/validation tools using the real upstream Zod schemas, including rejection of the trial's missing node fields and layer/tour collections. Integration uses the actual installed Cordis skill/tool registries and filesystem parser, checks activation, all nine byte-preserved skill bodies, metadata and cleanup. A third-party original `understand` remains untouched. Installer was also run with real dependencies and actual core/dashboard builds, not just mocked commands.
+Current checks: **126 isolated tests**, plus **4 installed-Electron integration/contract tests**, pass. The Host contract exercises the preparation/validation tools using the real upstream Zod schemas, including rejection of the trial's missing node fields and layer/tour collections. Integration uses the actual installed Cordis skill/tool registries and filesystem parser, checks activation, all nine byte-preserved skill bodies, metadata and cleanup. A third-party original `understand` remains untouched. Installer was also run with real dependencies and actual core/dashboard builds, not just mocked commands.
 
 After a full DSH restart, separately verify:
 

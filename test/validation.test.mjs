@@ -49,6 +49,19 @@ test('accepts valid batches with cross-batch edges and complete published baseli
   assert.deepEqual(readFileSync(join(f.dir, 'knowledge-graph.json')), before);
 });
 
+test('rejects the real trial directory/count tour and template/pseudo-file repairs without altering data', async t => {
+  const f = fixture(t);
+  f.graph.nodes[0].summary = 'Module: a.py';
+  f.graph.nodes.push({ ...f.node('a.py'), id: 'file:a.py:Agent.method' });
+  f.graph.nodes.push({ ...f.node('b.py'), id: 'document:b.py', type: 'document' });
+  f.graph.tour[0] = { order: 1.5, title: 'src', description: 'Overview of src — 77 files', nodeIds: Array(10).fill('file:a.py') };
+  f.put('knowledge-graph.json', f.graph); const before = readFileSync(join(f.dir, 'knowledge-graph.json'));
+  const result = await f.run(); assert.equal(result.valid, false);
+  for (const marker of ['Template-only', 'Whole-file', 'Duplicate whole-file', '1–5', 'sequential integer', 'Directory/count fallback']) assert.ok(result.issues.some(i => i.message.includes(marker)), marker);
+  assert.deepEqual(readFileSync(join(f.dir, 'knowledge-graph.json')), before);
+  assert.equal(result.analysisCompleted, false);
+});
+
 test('rejects the trial raw scanner handoff rather than silently using empty dependencies', async t => {
   const f = fixture(t); f.put('intermediate/scan-result.json', { files: f.scan.files, stats: {} });
   const result = await f.run('batches'); assert.equal(result.valid, false);
